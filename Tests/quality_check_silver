@@ -1,0 +1,226 @@
+/*
+===============================================================================
+Quality Checks: Silver Layer
+===============================================================================
+Script Purpose:
+    This script performs quality checks to validate the integrity, consistency,
+    and accuracy of the Silver Layer. These checks ensure:
+        - No NULL or duplicate primary keys.
+        - No unwanted leading/trailing spaces in string fields.
+        - Data standardization and consistency across coded fields.
+        - No invalid date ranges or ordering violations.
+        - Data consistency between related numeric fields.
+
+Usage Notes:
+    - Run these checks after each Silver Layer load.
+    - All checks should return zero rows if data is clean.
+    - Investigate and resolve any discrepancies found during the checks.
+===============================================================================
+*/
+
+-- ============================================================================
+-- Checking 'silver.crm_cust_info'
+-- ============================================================================
+
+-- CHECK 1: NULL or Duplicate Primary Keys
+-- Expectation: No rows returned
+-- If rows returned: Deduplication in load_silver failed
+-- ----------------------------------------------------------------------------
+SELECT
+    cst_id,
+    COUNT(*)  AS duplicate_count
+FROM silver.crm_cust_info
+GROUP BY cst_id
+HAVING COUNT(*) > 1
+    OR cst_id IS NULL;
+
+-- CHECK 2: Unwanted Spaces in cst_key
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    cst_key
+FROM silver.crm_cust_info
+WHERE cst_key != TRIM(cst_key);
+
+-- CHECK 3: Unwanted Spaces in Name Fields
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    cst_firstname,
+    cst_lastname
+FROM silver.crm_cust_info
+WHERE cst_firstname != TRIM(cst_firstname)
+   OR cst_lastname  != TRIM(cst_lastname);
+
+-- CHECK 4: Standardization of Marital Status
+-- Expectation: Only 'Married', 'Single', 'n/a'
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    cst_marital_status
+FROM silver.crm_cust_info
+ORDER BY cst_marital_status;
+
+-- CHECK 5: Standardization of Gender
+-- Expectation: Only 'Male', 'Female', 'n/a'
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    cst_gndr
+FROM silver.crm_cust_info
+ORDER BY cst_gndr;
+
+-- ============================================================================
+-- Checking 'silver.crm_prd_info'
+-- ============================================================================
+
+-- CHECK 1: NULL or Duplicate Primary Keys
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    prd_id,
+    COUNT(*) AS duplicate_count
+FROM silver.crm_prd_info
+GROUP BY prd_id
+HAVING COUNT(*) > 1
+    OR prd_id IS NULL;
+
+-- CHECK 2: Unwanted Spaces in prd_nm
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    prd_nm
+FROM silver.crm_prd_info
+WHERE prd_nm != TRIM(prd_nm);
+
+-- CHECK 3: NULL or Negative Product Cost
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    prd_id,
+    prd_nm,
+    prd_cost
+FROM silver.crm_prd_info
+WHERE prd_cost < 0
+   OR prd_cost IS NULL;
+
+-- CHECK 4: Standardization of Product Line
+-- Expectation: Only 'Mountain', 'Road', 'Other Sales', 'Touring', 'n/a'
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    prd_line
+FROM silver.crm_prd_info
+ORDER BY prd_line;
+
+-- CHECK 5: Invalid Date Orders (Start Date > End Date)
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    prd_id,
+    prd_nm,
+    prd_start_dt,
+    prd_end_dt
+FROM silver.crm_prd_info
+WHERE prd_end_dt < prd_start_dt;
+
+-- ============================================================================
+-- Checking 'silver.crm_sales_details'
+-- ============================================================================
+
+-- CHECK 1: Invalid Date Values in Date Fields
+-- Expectation: No rows returned
+-- Note: Checks Silver layer where dates should already be cast to DATE type
+-- ----------------------------------------------------------------------------
+SELECT
+    sls_ord_num,
+    sls_order_dt,
+    sls_ship_dt,
+    sls_due_dt
+FROM silver.crm_sales_details
+WHERE sls_order_dt IS NULL
+   OR sls_ship_dt  IS NULL
+   OR sls_due_dt   IS NULL;
+
+-- CHECK 2: Invalid Date Orders (Order Date > Ship Date or Due Date)
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    sls_ord_num,
+    sls_order_dt,
+    sls_ship_dt,
+    sls_due_dt
+FROM silver.crm_sales_details
+WHERE sls_order_dt > sls_ship_dt
+   OR sls_order_dt > sls_due_dt;
+
+-- CHECK 3: Data Consistency — Sales = Quantity * Price
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    sls_sales,
+    sls_quantity,
+    sls_price
+FROM silver.crm_sales_details
+WHERE sls_sales != sls_quantity * sls_price
+   OR sls_sales    IS NULL OR sls_sales    <= 0
+   OR sls_quantity IS NULL OR sls_quantity <= 0
+   OR sls_price    IS NULL OR sls_price    <= 0
+ORDER BY sls_sales, sls_quantity, sls_price;
+
+-- ============================================================================
+-- Checking 'silver.erp_cust_az12'
+-- ============================================================================
+
+-- CHECK 1: Out-of-Range Birthdates
+-- Expectation: No rows returned
+-- Valid Range: 1924-01-01 to Today
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    bdate
+FROM silver.erp_cust_az12
+WHERE bdate < '1924-01-01'
+   OR bdate > GETDATE()
+ORDER BY bdate;
+
+-- CHECK 2: Standardization of Gender
+-- Expectation: Only 'Male', 'Female', 'n/a'
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    gen
+FROM silver.erp_cust_az12
+ORDER BY gen;
+
+-- ============================================================================
+-- Checking 'silver.erp_loc_a101'
+-- ============================================================================
+
+-- CHECK 1: Standardization of Country Values
+-- Expectation: Only 'United States', 'Germany', 'n/a' and known countries
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    cntry
+FROM silver.erp_loc_a101
+ORDER BY cntry;
+
+-- ============================================================================
+-- Checking 'silver.erp_px_cat_g1v2'
+-- ============================================================================
+
+-- CHECK 1: Unwanted Spaces in String Fields
+-- Expectation: No rows returned
+-- ----------------------------------------------------------------------------
+SELECT
+    id,
+    cat,
+    subcat,
+    maintenance
+FROM silver.erp_px_cat_g1v2
+WHERE cat         != TRIM(cat)
+   OR subcat      != TRIM(subcat)
+   OR maintenance != TRIM(maintenance);
+
+-- CHECK 2: Standardization of Maintenance Values
+-- Expectation: Review distinct values for consistency
+-- ----------------------------------------------------------------------------
+SELECT DISTINCT
+    maintenance
+FROM silver.erp_px_cat_g1v2
+ORDER BY maintenance;

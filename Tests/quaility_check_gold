@@ -1,0 +1,61 @@
+/*
+===============================================================================
+Quality Checks: Gold Layer
+===============================================================================
+Script Purpose:
+    This script performs quality checks to validate the integrity, consistency,
+    and accuracy of the Gold Layer. These checks ensure:
+        - Uniqueness of surrogate keys in dimension tables.
+        - Referential integrity between fact and dimension tables.
+        - Validation of relationships in the data model for analytical purposes.
+
+Usage Notes:
+    - Run after each Gold layer load.
+    - All checks should return zero rows if data is clean.
+    - Investigate and resolve any discrepancies found during the checks.
+===============================================================================
+*/
+
+-- ============================================================================
+-- CHECK 1: Uniqueness of Customer Key in gold.dim_customers
+-- ============================================================================
+-- Expectation: No rows returned (each customer_key must be unique)
+-- If rows returned: Duplicate customer keys exist — investigate deduplication
+-- ============================================================================
+SELECT
+    customer_key,
+    COUNT(*)                AS duplicate_count
+FROM gold.dim_customers
+GROUP BY customer_key
+HAVING COUNT(*) > 1;
+
+-- ============================================================================
+-- CHECK 2: Uniqueness of Product Key in gold.dim_products
+-- ============================================================================
+-- Expectation: No rows returned (each product_key must be unique)
+-- If rows returned: Duplicate product keys exist — investigate deduplication
+-- ============================================================================
+SELECT
+    product_key,
+    COUNT(*)                AS duplicate_count
+FROM gold.dim_products
+GROUP BY product_key
+HAVING COUNT(*) > 1;
+
+-- ============================================================================
+-- CHECK 3: Referential Integrity between gold.fact_sales and dimensions
+-- ============================================================================
+-- Expectation: No rows returned (every fact record must link to valid dimensions)
+-- If rows returned: Orphaned fact records exist with no matching customer or product
+-- ============================================================================
+SELECT
+    f.order_number,
+    f.customer_key,
+    f.product_key,
+    CASE WHEN c.customer_key IS NULL THEN '>> Missing in dim_customers' END AS customer_issue,
+    CASE WHEN p.product_key  IS NULL THEN '>> Missing in dim_products'  END AS product_issue
+FROM gold.fact_sales        f
+LEFT JOIN gold.dim_customers c ON c.customer_key = f.customer_key
+LEFT JOIN gold.dim_products  p ON p.product_key  = f.product_key
+WHERE c.customer_key IS NULL
+   OR p.product_key  IS NULL;

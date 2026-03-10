@@ -5,6 +5,8 @@ This project demonstrates a comprehensive data warehousing and analytics solutio
 
 ---
 ## 📐 Data Architecture
+<img width="1599" height="878" alt="Data_Archture" src="https://github.com/user-attachments/assets/e923e818-d863-437d-aa2c-93cdac50fa29" />
+
 
 The data architecture for this project follows the Medallion Architecture, structured across three layers
 

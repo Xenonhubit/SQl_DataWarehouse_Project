@@ -63,27 +63,49 @@ These insights empower stakeholders with key business metrics, enabling strategi
 ```
 data-warehouse-project/
 │
-├── datasets/                           # Raw datasets used for the project (ERP and CRM data)
+├── .github/                            # GitHub-specific configurations
+│   ├── workflows/                      # CI/CD pipeline definitions (e.g., run tests on push)
+│   └── PULL_REQUEST_TEMPLATE.md        # Standardized PR descriptions
 │
-├── docs/                               # Project documentation and architecture details
-│   ├── etl.drawio                      # Draw.io file shows all different techniquies and methods of ETL
-│   ├── data_architecture.drawio        # Draw.io file shows the project's architecture
-│   ├── data_catalog.md                 # Catalog of datasets, including field descriptions and metadata
-│   ├── data_flow.drawio                # Draw.io file for the data flow diagram
-│   ├── data_models.drawio              # Draw.io file for data models (star schema)
-│   ├── naming-conventions.md           # Consistent naming guidelines for tables, columns, and files
+├── datasets/                           # Raw source data (gitignored if sensitive)
+│   ├── crm/                            # CRM source files
+│   └── erp/                            # ERP source files
 │
-├── scripts/                            # SQL scripts for ETL and transformations
-│   ├── bronze/                         # Scripts for extracting and loading raw data
-│   ├── silver/                         # Scripts for cleaning and transforming data
-│   ├── gold/                           # Scripts for creating analytical models
+├── docs/                               # Project documentation
+│   ├── architecture/                   # System and data architecture diagrams
+│   │   ├── data_architecture.drawio
+│   │   ├── data_flow.drawio
+│   │   └── data_models.drawio          # Star schema diagrams
+│   ├── etl/
+│   │   └── etl.drawio                  # ETL techniques and methods
+│   ├── data_catalog.md                 # Field descriptions and metadata per layer
+│   ├── naming-conventions.md           # Naming standards for tables, columns, files
+│   └── runbook.md                      # How to deploy, run, and troubleshoot the pipeline
 │
-├── tests/                              # Test scripts and quality files
+├── scripts/                            # All SQL scripts
+│   ├── init/                           # One-time setup: create databases, schemas, roles
+│   ├── bronze/                         # Raw ingestion — minimal transformation
+│   │   ├── crm/
+│   │   └── erp/
+│   ├── silver/                         # Cleaned, standardized, deduplicated data
+│   │   ├── crm/
+│   │   └── erp/
+│   └── gold/                           # Analytical models — facts, dims, aggregates
+│       ├── dimensions/
+│       └── facts/
 │
-├── README.md                           # Project overview and instructions
-├── LICENSE                             # License information for the repository
-├── .gitignore                          # Files and directories to be ignored by Git
-└── requirements.txt                    # Dependencies and requirements for the project
+├── tests/                              # Data quality and validation
+│   ├── bronze/                         # Null checks, row count validations
+│   ├── silver/                         # Dedup checks, type conformance
+│   └── gold/                           # Business logic and metric validations
+│
+├── logs/                               # Pipeline run logs (gitignored)
+│
+├── .gitignore
+├── LICENSE
+├── README.md                           # Project overview, setup guide, layer descriptions
+├── CHANGELOG.md                        # Version history and notable changes
+└── requirements.txt                    # Dependencies (e.g., dbt, sqlfluff, great_expectations)
 ```
 ---
 
